@@ -1,0 +1,120 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Serial Monitor Viewer</title>
+  <style>
+    body {
+      margin: 0;
+      font-family: Arial, sans-serif;
+      height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      background: linear-gradient(90deg, #1a2a6c, #b21f1f, #fdbb2d);
+      background-size: 200% 200%;
+      animation: gradient 8s ease infinite;
+      color: #fff;
+    }
+
+    @keyframes gradient {
+      0% { background-position: 0% 50%; }
+      50% { background-position: 100% 50%; }
+      100% { background-position: 0% 50%; }
+    }
+
+    .container {
+      text-align: center;
+      max-width: 800px;
+      padding: 20px;
+      border-radius: 12px;
+      background: rgba(0, 0, 0, 0.7);
+      box-shadow: 0 4px 15px rgba(0, 0, 0, 0.5);
+    }
+
+    h1 {
+      font-size: 2.5em;
+      margin-bottom: 10px;
+    }
+
+    p {
+      font-size: 1.2em;
+    }
+
+    button {
+      padding: 10px 20px;
+      font-size: 1em;
+      color: #fff;
+      background: #007bff;
+      border: none;
+      border-radius: 5px;
+      cursor: pointer;
+      margin-top: 20px;
+    }
+
+    button:hover {
+      background: #0056b3;
+    }
+
+    #output {
+      margin-top: 20px;
+      width: 90%;
+      max-width: 600px;
+      height: 300px;
+      background: #000;
+      color: #0f0;
+      overflow-y: auto;
+      border: 1px solid #333;
+      padding: 10px;
+      border-radius: 8px;
+      font-family: monospace;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>Serial Monitor Viewer</h1>
+    <p>Connect to your Arduino and view Serial Monitor output directly in the browser.</p>
+    <button id="connectButton">Connect to your RePosture</button>
+    <div id="output">Waiting for data...</div>
+  </div>
+
+  <script>
+    const outputElement = document.getElementById("output");
+    const connectButton = document.getElementById("connectButton");
+
+    let port;
+    let reader;
+
+    connectButton.addEventListener("click", async () => {
+      try {
+        // Request a port and open a connection
+        port = await navigator.serial.requestPort();
+        await port.open({ baudRate: 9600 });
+        outputElement.textContent = "Connected to Arduino. Listening for data...\n";
+
+        // Read data from the serial port
+        reader = port.readable.getReader();
+
+        while (true) {
+          const { value, done } = await reader.read();
+          if (done) break; // Exit loop if stream is closed
+          const text = new TextDecoder().decode(value);
+          outputElement.textContent += text; // Append data to the output box
+          outputElement.scrollTop = outputElement.scrollHeight; // Auto-scroll
+        }
+      } catch (error) {
+        outputElement.textContent = `Error: ${error.message}`;
+      }
+    });
+
+    // Handle disconnection when the browser tab is closed
+    window.addEventListener("beforeunload", async () => {
+      if (reader) await reader.releaseLock();
+      if (port) await port.close();
+    });
+  </script>
+</body>
+</html>
